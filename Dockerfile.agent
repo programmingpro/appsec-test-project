@@ -8,5 +8,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY agent.py .
 COPY stealer.py .
+COPY fake_api.py .
+COPY utils.py .
+COPY config.json .
 
 CMD ["python", "-u", "agent.py"]

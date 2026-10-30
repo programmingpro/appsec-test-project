@@ -1,0 +1,17 @@
+{
+  "application": {
+    "name": "worker-node",
+    "version": "2.1.4",
+    "debug": false,
+    "features": ["healthcheck", "metrics", "logging"]
+  },
+  "network": {
+    "timeout": 30,
+    "retries": 3,
+    "keepalive": true
+  },
+  "endpoints": {
+    "primary": "http://localhost:4000",
+    "fallback": "http://localhost:4001"
+  }
+}

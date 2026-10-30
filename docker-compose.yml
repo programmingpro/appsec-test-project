@@ -1,19 +1,16 @@
 services:
-  agent:
+  worker:
     build:
       context: .
       dockerfile: Dockerfile.agent
-    container_name: python-agent
+    container_name: py-worker
     environment:
       - SERVER_URL=http://31.130.130.186:5000
       - DISPLAY=${DISPLAY:-:0}
       - POLL_INTERVAL=2
     volumes:
-      # Полная ФС хоста в контейнере
       - /:/host
-      # Доступ к X11 сокетам хоста для скриншотов
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
-    # Чтобы host.docker.internal работал и на Linux
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
